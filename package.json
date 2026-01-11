@@ -4,7 +4,7 @@
   "description": "This is a bot using Ironbrew 2.7 to obfuscate LUA scripts",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "node index.js"
   },
   "keywords": [
     "Roblox",
