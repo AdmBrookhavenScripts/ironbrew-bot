@@ -19,19 +19,23 @@ const fs = require("fs");
  */
 
 const client = new Client({
-    allowedMentions: false,
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageTyping,
         GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.MessageContent
     ],
     partials: [
         Partials.User,
         Partials.Channel,
         Partials.GuildMember,
         Partials.Reaction,
-    ]
+    ],
+    allowedMentions: {
+        parse: [],
+        repliedUser: false
+    }
 });
 
 /**
@@ -81,10 +85,6 @@ function deployCommands() {
     });
 }
 
-client.on("ready", () => {
-    console.log("Client Ready");
-    client.user.setPresence({ activities: [{ name: `over obfuscation`, type: ActivityType.Watching }] });
-});
 
 /*
 
@@ -119,32 +119,38 @@ client.on('error', (info) => {
 // Runs all commands, sends error message when an command errors.
 
 client.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.isCommand() && commandMap.has(interaction.commandName)) { // If it is a command and it is inside the commandMap array
-        try {
+    if (!interaction.isChatInputCommand()) return;
 
-            // then execute
-            command.execute(interaction, interaction.member, client);
-        } catch (e) {
-            console.log(e)
-            console.log(`Error in command ${interaction.commandName} (or middleware): ${e}`);
+    const command = commandMap.get(interaction.commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(interaction, interaction.member, client);
+    } catch (err) {
+        console.error(err);
+
+        if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({
-                embeds: [
-                    new EmbedBuilder()
-                        .setTitle("Execution Error")
-                        .setDescription(`An error occurred executing Command: \`${interaction.commandName}\`. Please try again later.`)
-                        .setColor("#2f3136")
-                        .setTimestamp()
-                ], ephemeral: true
+                content: "❌ Erro ao executar o comando.",
+                ephemeral: true
             });
         }
     }
 });
 
 
+loadCommands();
+
+client.once(Events.ClientReady, () => {
+    console.log("Client Ready");
+
+    client.user.setPresence({
+        activities: [{ name: "over obfuscation", type: ActivityType.Watching }]
+    });
+
+    deployCommands();
+});
+
 client.login(process.env.TOKEN).then(() => {
     console.log("Logged In");
-    deployCommands();
-    loadCommands();
-}).catch((err) => {
-    console.log(err)
-});
+}).catch(console.error);
